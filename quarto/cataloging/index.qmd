@@ -1,0 +1,45 @@
+---
+title: Cataloging tracks
+---
+
+
+
+# Audio catalogs
+
+Within the root directory you select, delimited-text files with names ending `.cex` are treated as audio catalogs, and are listed in the **Catalog** menu. Catalogs in subfolders are only recognized if you re-select that subfolder as your starting point.
+
+
+## Format
+
+Catalogs are delimited-text files using `|` as delimiter by default, and including a header row. The catalog *must* include a column for `path`, giving the path of the track relative to the catalog's directory.
+
+
+All other columns are optional, but the following optional columns are given special treatment if present:
+
+
+
+| Column |  Used for |
+|---|---|
+| `title` | label in the list, player bar, window title, Now Playing |
+| `composer` | Group by → Composer; player bar second line; Now Playing artist if no performer |
+| `performer` | Group by → Performer; player bar second line; Now Playing artist. An `artist` column is read as `performer` |
+| `album`  | Group by → Album; player bar second line; Now Playing album |
+| `tags`  | Group by → Tag (comma-separated; a track appears under each tag); search |
+| `caption`  | tooltip; search |
+| `credits`  | tooltip; search |
+| `license`  | tooltip |
+
+
+Any other columns that you choose to add will be included in the full-text search of the catalog. For example, if you had a `year` column, it would be searchable, but not otherwise used.
+
+
+## Example
+
+Here is an example of a valid catalog file:
+
+```
+path|title|composer|performer|album|credits|license|caption
+WTC/01.mp3|Prelude in C major|Bach, J. S.|NS||Recorded by NS|CC BY|Book 1
+WTC/02.mp3|Fugue in C major|Bach, J. S.|NS||Recorded by NS|CC BY|Book 1
+goldberg-aria.mp3|Aria|Bach, J. S.|Glenn Gould|Goldberg Variations|||
+```

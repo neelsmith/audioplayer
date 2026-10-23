@@ -4,4 +4,7 @@
 
 Play audio files in your local file system.
 
-- [hosted on gitub](https://neelsmith.github.io/audioplayer/)
+
+
+- [documentation](https://neelsmith.github.io/audioplayer/)
+- [working installation](https://neelsmith.github.io/audioplayer/audioplayer.html)
