@@ -24,7 +24,7 @@ _Drafted 2026-10-16 from CLAUDE.md. Status: decisions settled (§6); M0–M4 don
 | Concern | Choice | Why |
 |---|---|---|
 | Language | Vanilla JS (ES modules) + JSDoc types | No framework needed for a small UI; keeps the output tiny |
-| Build | Vite + own `build/singleFile.js` plugin | Inlines JS/CSS into one `dist/index.html`; replaced `vite-plugin-singlefile` (its micromatch→braces dep had unfixable audit warnings) |
+| Build | Vite + own `build/singleFile.js` plugin | Inlines JS/CSS into one `dist/audioplayer.html`; replaced `vite-plugin-singlefile` (its micromatch→braces dep had unfixable audit warnings) |
 | Unit tests | Vitest | Same config as Vite; Node 22 is available |
 | Component tests | Vitest + jsdom (+ Testing Library DOM) | Test UI flows without a browser |
 | E2E (later, optional) | Playwright opening the built file via `file://` | Verifies the "single file" promise for real |
@@ -52,14 +52,14 @@ tests/
   unit/ …                 # tree, formats, format
   component/ …            # browse→select→play flow
 package.json, vite.config.js   # at repo root
-dist/index.html          # build output (gitignored, or committed for releases — your call)
+dist/audioplayer.html          # build output (gitignored, or committed for releases — your call)
 ```
 
 ## 5. Milestones
 
 **M0 — Scaffolding**
 - `package.json`, Vite + singlefile plugin, Vitest + jsdom, `.gitignore` (node_modules, dist).
-- `npm run dev | build | test`. Build emits `dist/index.html`; smoke-check it opens from `file://`.
+- `npm run dev | build | test`. Build emits `dist/audioplayer.html`; smoke-check it opens from `file://`.
 
 **M1 — Pure utilities (TDD)**
 - `tree.js`: turn a flat `File[]` (with `webkitRelativePath`) or directory handles into a nested tree; sort dirs-first, alphabetical (natural sort so "Track 2" < "Track 10").

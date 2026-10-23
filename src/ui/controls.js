@@ -1,4 +1,4 @@
-import { formatTime, displayName } from './format.js';
+import { formatTime, trackTitle, trackSubtitle } from './format.js';
 
 const svg = (d) => `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path fill="currentColor" d="${d}"/></svg>`;
 const ICONS = {
@@ -84,10 +84,10 @@ export function renderControls(container, actions, { volumeAdjustable = true } =
     el.play.title = state.playing ? 'Pause (Space)' : 'Play (Space)';
 
     if (loaded) {
-      el.title.textContent = displayName(state.track.name);
+      el.title.textContent = trackTitle(state.track);
       el.title.title = state.track.name;
-      const folder = state.track.path.slice(0, Math.max(0, state.track.path.lastIndexOf('/')));
-      el.folder.textContent = folder;
+      el.folder.textContent = trackSubtitle(state.track);
+      el.folder.title = el.folder.textContent;
     } else {
       el.title.textContent = 'No track selected';
       el.folder.textContent = '';

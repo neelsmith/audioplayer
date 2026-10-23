@@ -45,3 +45,35 @@ describe('inlineAssets', () => {
     expect(inlined).toEqual([]);
   });
 });
+
+describe('renameHtml', () => {
+  const page = (fileName) => ({ type: 'asset', fileName, source: '<html></html>' });
+  const ctx = () => {
+    const emitted = [];
+    return { emitted, emitFile: (f) => emitted.push(f) };
+  };
+
+  it('re-emits the only page under the new name', async () => {
+    const { renameHtml } = await import('../../build/singleFile.js');
+    const bundle = { 'index.html': page('index.html') };
+    const c = ctx();
+    renameHtml(bundle, 'audioplayer.html', c);
+    expect(bundle).toEqual({});
+    expect(c.emitted).toEqual([{ type: 'asset', fileName: 'audioplayer.html', source: '<html></html>' }]);
+  });
+
+  it('does nothing if the name already matches', async () => {
+    const { renameHtml } = await import('../../build/singleFile.js');
+    const bundle = { 'audioplayer.html': page('audioplayer.html') };
+    const c = ctx();
+    renameHtml(bundle, 'audioplayer.html', c);
+    expect(Object.keys(bundle)).toEqual(['audioplayer.html']);
+    expect(c.emitted).toEqual([]);
+  });
+
+  it('refuses to merge several pages into one name', async () => {
+    const { renameHtml } = await import('../../build/singleFile.js');
+    const bundle = { 'a.html': page('a.html'), 'b.html': page('b.html') };
+    expect(() => renameHtml(bundle, 'audioplayer.html', ctx())).toThrow(/expected one HTML page/);
+  });
+});

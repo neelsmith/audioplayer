@@ -3,15 +3,22 @@ import { classify } from '../src/audio/formats.js';
 const PLAYS = new Set(['audio/mpeg', 'audio/mp4', 'audio/wav']);
 export const fakeClassify = (name, type) => classify(name, type, (mime) => (PLAYS.has(mime) ? 'probably' : ''));
 
-/** File-like object with a relative path. */
-export const fakeFile = (path, type = '') => ({ name: path.split('/').pop(), webkitRelativePath: path, type });
+/** File-like object with a relative path; `text` makes it readable (for .cex catalogs). */
+export const fakeFile = (path, type = '', text) => ({
+  name: path.split('/').pop(), webkitRelativePath: path, type,
+  text: async () => { if (text === undefined) throw new Error('unreadable'); return text; },
+});
 
 /** Minimal app markup matching src/index.html. */
 export function mountAppMarkup() {
   document.body.innerHTML = `
     <button type="button" id="open-folder">Open folder…</button>
     <input id="folder-input" type="file" webkitdirectory multiple hidden />
-    <main id="drop-zone"><p id="status"></p><nav id="tree"></nav></main>`;
+    <main id="drop-zone"><p id="status"></p>
+      <div id="toolbar" hidden><input type="search" id="search" />
+        <div id="catalog-bar" hidden><select id="catalog-select"></select><select id="group-select"></select></div></div>
+      <details id="warnings" hidden><summary></summary><ul></ul></details>
+      <nav id="tree"></nav></main>`;
   return document.body;
 }
 

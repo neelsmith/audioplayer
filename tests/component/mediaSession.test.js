@@ -35,6 +35,21 @@ describe('connectMediaSession', () => {
     expect(ms.playbackState).toBe('paused');
   });
 
+  it('prefers catalog title / performer / album, and re-publishes when they change', async () => {
+    const { player } = await makePlayer();
+    const ms = fakeSession();
+    connectMediaSession(player, { next() {}, prev() {} }, { mediaSession: ms, Metadata: null });
+    const t = { ...track, meta: { title: 'Aria', composer: 'Bach', performer: 'Gould', album: 'Goldberg' } };
+    await player.load(t);
+    expect(ms.metadata).toEqual({ title: 'Aria', album: 'Goldberg', artist: 'Gould' });
+    t.meta = { title: 'Aria', composer: 'Bach', performer: '', album: 'Goldberg' };
+    player.emit();
+    expect(ms.metadata.artist).toBe('Bach'); // composer when there's no performer
+    t.meta = { title: 'Aria (1981)', composer: '', performer: '', album: '' };
+    player.emit();
+    expect(ms.metadata).toEqual({ title: 'Aria (1981)', album: 'Album', artist: 'Artist' });
+  });
+
   it('reports position once the duration is known', async () => {
     const { player, audio } = await makePlayer();
     const ms = fakeSession();

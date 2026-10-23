@@ -15,6 +15,15 @@
     <main id="drop-zone">
       <p id="status" role="status" aria-live="polite">Open a folder, or drag one here.</p>
       <p class="hint">Keyboard: <kbd>Space</kbd> play/pause · <kbd>←</kbd> <kbd>→</kbd> skip 5 seconds</p>
+      <div id="toolbar" class="toolbar" hidden>
+        <input type="search" id="search" placeholder="Search tracks" aria-label="Search tracks"
+          aria-keyshortcuts="/" title="Search (/)" autocomplete="off" spellcheck="false" />
+        <div id="catalog-bar" class="catalog-bar" hidden>
+          <label>Catalog <select id="catalog-select"></select></label>
+          <label>Group by <select id="group-select"></select></label>
+        </div>
+      </div>
+      <details id="warnings" class="warnings" hidden><summary></summary><ul></ul></details>
       <nav id="tree" aria-label="Files"></nav>
     </main>
     <footer id="player" aria-label="Player"></footer>

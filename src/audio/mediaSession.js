@@ -1,10 +1,12 @@
-import { displayName } from '../ui/format.js';
+import { trackTitle } from '../ui/format.js';
 
 /**
  * Connect the player to the Media Session API (Safari 15+, Chrome, Firefox):
  * hardware media keys, macOS Control Center / Now Playing, iOS lock screen.
- * Title = file name without extension; album = its folder; artist = the folder above
- * (matching the common Artist/Album/Track layout). No-op where unsupported.
+ * Title, artist and album come from the track's catalog entry when it has one
+ * (artist = performer, else composer: MediaMetadata has no composer field);
+ * otherwise title = file name without extension, album = its folder, artist = the
+ * folder above (the common Artist/Album/Track layout). No-op where unsupported.
  *
  * @param {import('./player.js').Player} player
  * @param {{ next: () => void, prev: () => void }} nav
@@ -31,21 +33,14 @@ export function connectMediaSession(player, { next, prev }, {
   };
   for (const [action, fn] of Object.entries(actions)) setHandler(action, fn);
 
-  let lastTrack;
+  let lastKey;
   const unsubscribe = player.subscribe((s) => {
-    if (s.track !== lastTrack) {
-      lastTrack = s.track;
-      if (s.track) {
-        const folders = s.track.path.split('/').slice(0, -1);
-        const info = {
-          title: displayName(s.track.name),
-          album: folders.at(-1) || '',
-          artist: folders.at(-2) || '',
-        };
-        ms.metadata = Metadata ? new Metadata(info) : info;
-      } else {
-        ms.metadata = null;
-      }
+    const info = s.track ? describe(s.track) : null;
+    // Re-publish when the track changes, or its catalog data does (catalog switched).
+    const key = info && `${s.track.path}\u0000${info.title}\u0000${info.artist}\u0000${info.album}`;
+    if (key !== lastKey) {
+      lastKey = key;
+      ms.metadata = info ? (Metadata ? new Metadata(info) : info) : null;
     }
     ms.playbackState = s.track ? (s.playing ? 'playing' : 'paused') : 'none';
     if (s.track && Number.isFinite(s.duration) && s.duration > 0 && ms.setPositionState) {
@@ -54,6 +49,15 @@ export function connectMediaSession(player, { next, prev }, {
       } catch { /* ignore transient invalid states */ }
     }
   });
+
+  function describe(track) {
+    const folders = track.path.split('/').slice(0, -1);
+    return {
+      title: trackTitle(track),
+      album: track.meta?.album || folders.at(-1) || '',
+      artist: track.meta?.performer || track.meta?.composer || folders.at(-2) || '',
+    };
+  }
 
   return () => {
     unsubscribe();
