@@ -6,9 +6,9 @@ import { findCatalogs, defaultCatalog, parseCatalog, applyCatalog, clearCatalog 
 import { groupTracks, GROUP_MODES } from '../catalog/group.js';
 import { matcher, filterTree, countFiles } from '../catalog/search.js';
 import { renderControls } from './controls.js';
-import { folderPlaylist, step } from '../audio/playlist.js';
+import { folderPlaylist, makeQueue } from '../audio/playlist.js';
 import { connectMediaSession } from '../audio/mediaSession.js';
-import { loadVolume, saveVolume } from '../audio/prefs.js';
+import { loadVolume, saveVolume, loadShuffle, saveShuffle } from '../audio/prefs.js';
 import { trackTitle } from './format.js';
 
 const APP_TITLE = 'Audio Player';
@@ -45,11 +45,13 @@ const MAX_MISSING_LISTED = 10;
  *
  * @param {HTMLElement | Document} root
  * @param {{ classify?: Function, onSelect?: Function, player?: import('../audio/player.js').Player,
- *           storage?: Storage | null, mediaSessionEnv?: object }} [opts]
+ *           storage?: Storage | null, mediaSessionEnv?: object, random?: () => number }} [opts]
+ *   `random` drives shuffle (tests inject a predictable one)
  * @returns {{ show: Function, view: any, next: Function, prev: Function, destroy: Function }}
  */
 export function initApp(root = document, {
   classify = defaultClassify, onSelect = () => {}, player = null, storage = null, mediaSessionEnv = undefined,
+  random = Math.random,
 } = {}) {
   const $ = (sel) => root.querySelector(sel);
   const input = $('#folder-input');
@@ -86,48 +88,66 @@ export function initApp(root = document, {
   let query = '';
   /** The (possibly search-filtered) tree currently shown in Folder view. */
   let shownTree = null;
-  /** @type {{ tracks: any[], index: number }} */
-  let playlist = { tracks: [], index: -1 };
+  /**
+   * The current playlist: `tracks` in display order, played in `order` (identity, or a
+   * shuffle with the chosen track first); the current track is tracks[order[pos]].
+   * @type {{ tracks: any[], order: number[], pos: number }}
+   */
+  let playlist = { tracks: [], order: [], pos: -1 };
+  let shuffle = loadShuffle(storage);
 
   const isPlayable = (node) => kindOf(node, classify) === 'playable';
   const nav = () => ({
-    hasPrev: playlist.index > 0,
-    hasNext: playlist.index >= 0 && playlist.index < playlist.tracks.length - 1,
+    hasPrev: playlist.pos > 0,
+    hasNext: playlist.pos >= 0 && playlist.pos < playlist.order.length - 1,
+    shuffle,
   });
 
   /** Play `node`; `tracks` is the group it was picked from (else its folder is the playlist). */
   function select(node, tracks) {
     playlistTree = tree;
+    let list = null;
     if (tracks) {
       const playable = tracks.filter(isPlayable);
-      playlist = { tracks: playable, index: playable.indexOf(node) };
+      list = { tracks: playable, index: playable.indexOf(node) };
     } else if (shownTree) {
       // In Folder view the playlist is the track's folder as shown (search results only, if searching).
-      playlist = folderPlaylist(shownTree, node.path, isPlayable);
+      list = folderPlaylist(shownTree, node.path, isPlayable);
     }
+    if (list) playlist = { tracks: list.tracks, ...makeQueue(list.tracks.length, list.index, shuffle, random) };
     player?.load(node);
     onSelect(node);
   }
 
-  function playAt(index) {
-    const node = playlist.tracks[index];
+  function playAtPos(pos) {
+    const node = playlist.tracks[playlist.order[pos]];
     if (!node) return;
-    playlist.index = index;
+    playlist.pos = pos;
     if (playlistTree === tree) view?.select(node.path);
     player?.load(node);
     onSelect(node);
   }
 
   function next() {
-    const i = step(playlist.tracks.length, playlist.index, +1);
-    if (i >= 0) playAt(i);
+    if (nav().hasNext) playAtPos(playlist.pos + 1);
   }
 
   function prev() {
     if (!player?.track) return;
-    const i = step(playlist.tracks.length, playlist.index, -1);
-    if (player.state.currentTime > RESTART_THRESHOLD || i < 0) player.seek(0);
-    else playAt(i);
+    if (player.state.currentTime > RESTART_THRESHOLD || !nav().hasPrev) player.seek(0);
+    else playAtPos(playlist.pos - 1);
+  }
+
+  /**
+   * Turn shuffle on/off. The current track carries on; on = the rest of the playlist in
+   * random order; off = continue in display order from the current track.
+   */
+  function setShuffle(on) {
+    shuffle = on;
+    saveShuffle(storage, on);
+    const current = playlist.pos >= 0 ? playlist.order[playlist.pos] : -1;
+    if (playlist.tracks.length) playlist = { tracks: playlist.tracks, ...makeQueue(playlist.tracks.length, current, on, random) };
+    player?.emit();
   }
 
   let controls = null;
@@ -146,6 +166,7 @@ export function initApp(root = document, {
       seek: (t) => player.seek(t),
       setVolume: (v) => player.setVolume(v),
       toggleMute: () => player.toggleMute(),
+      toggleShuffle: () => setShuffle(!shuffle),
     }, { volumeAdjustable: player.volumeAdjustable });
 
     let lastVol = player.state.volume;
@@ -160,7 +181,7 @@ export function initApp(root = document, {
       }
     }));
     cleanups.push(connectMediaSession(player, { next, prev }, mediaSessionEnv));
-    player.onEnded = next; // auto-advance; stops after the folder's last track
+    player.onEnded = next; // auto-advance; stops after the playlist's last track (in play order)
 
     const onKey = (e) => handleKey(e);
     // Some browsers (Firefox, Safari) activate a focused button/summary on Space *keyup*;
@@ -177,6 +198,7 @@ export function initApp(root = document, {
   /**
    * Space: play/pause (everywhere except text fields; Enter still activates buttons).
    * ←/→: seek ±5 s, except on sliders, which use arrows themselves.
+   * S: shuffle on/off.  /: focus the search box.
    */
   function handleKey(e) {
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -190,6 +212,9 @@ export function initApp(root = document, {
     } else if (e.key === ' ') {
       e.preventDefault(); // stop page scroll and the focused button's own click
       player.toggle();
+    } else if (e.key === 's' || e.key === 'S') {
+      e.preventDefault();
+      setShuffle(!shuffle);
     } else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && !onSlider && player.track) {
       e.preventDefault();
       player.seekBy(e.key === 'ArrowRight' ? SEEK_STEP : -SEEK_STEP);
@@ -378,6 +403,8 @@ export function initApp(root = document, {
   return {
     show,
     useCatalog,
+    setShuffle,
+    get shuffle() { return shuffle; },
     next,
     prev,
     get view() { return view; },

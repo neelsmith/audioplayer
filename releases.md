@@ -1,6 +1,10 @@
 # Release notes
 
-Current version: **1.1.0.**
+Current version: **1.2.0.**
+
+
+**1.2.0**, *Oct. 23, 2026*: adds shuffle option to player.
+
 
 **1.1.0**, *Oct. 22, 2026*: 
 

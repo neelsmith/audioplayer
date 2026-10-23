@@ -5,6 +5,7 @@ const ICONS = {
   play: svg('M8 5v14l11-7z'),
   pause: svg('M6 5h4v14H6zm8 0h4v14h-4z'),
   prev: svg('M6 6h2v12H6zm3.5 6 8.5 6V6z'),
+  shuffle: svg('M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z'),
   next: svg('M16 6h2v12h-2zM6 18l8.5-6L6 6z'),
   volume: svg('M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z'),
   muted: svg('M3 9v6h4l5 5V4L7 9H3zm13.6 3 2.9-2.9-1.4-1.4-2.9 2.9-2.9-2.9-1.4 1.4 2.9 2.9-2.9 2.9 1.4 1.4 2.9-2.9 2.9 2.9 1.4-1.4z'),
@@ -15,6 +16,7 @@ const TEMPLATE = `
     <button type="button" class="prev" aria-label="Previous track" title="Previous track">${ICONS.prev}</button>
     <button type="button" class="play" aria-label="Play" title="Play (Space)" aria-keyshortcuts="Space">${ICONS.play}</button>
     <button type="button" class="next" aria-label="Next track" title="Next track">${ICONS.next}</button>
+    <button type="button" class="shuffle" aria-label="Shuffle" aria-pressed="false" aria-keyshortcuts="S" title="Shuffle off (S)">${ICONS.shuffle}</button>
   </div>
   <div class="info" aria-live="polite">
     <span class="title">No track selected</span>
@@ -34,7 +36,7 @@ const TEMPLATE = `
 /**
  * Render the player controls into `container`.
  * @param {HTMLElement} container
- * @param {{ toggle: Function, prev: Function, next: Function, seek: (t: number) => void,
+ * @param {{ toggle: Function, prev: Function, next: Function, toggleShuffle?: Function, seek: (t: number) => void,
  *           setVolume: (v: number) => void, toggleMute: Function }} actions
  * @param {{ volumeAdjustable?: boolean }} [options]  false hides the volume slider (iOS ignores it)
  * @returns {{ update: (state: import('../audio/player.js').PlayerState, nav?: { hasPrev: boolean, hasNext: boolean }) => void }}
@@ -44,7 +46,7 @@ export function renderControls(container, actions, { volumeAdjustable = true } =
   container.innerHTML = TEMPLATE;
   const $ = (sel) => container.querySelector(sel);
   const el = {
-    prev: $('.prev'), play: $('.play'), next: $('.next'),
+    prev: $('.prev'), play: $('.play'), next: $('.next'), shuffle: $('.shuffle'),
     title: $('.title'), folder: $('.folder'),
     elapsed: $('.elapsed'), seek: $('.seek'), duration: $('.duration'),
     mute: $('.mute'), vol: $('.vol'), error: $('.error'),
@@ -55,6 +57,7 @@ export function renderControls(container, actions, { volumeAdjustable = true } =
 
   el.play.addEventListener('click', () => actions.toggle());
   el.prev.addEventListener('click', () => actions.prev());
+  el.shuffle.addEventListener('click', () => actions.toggleShuffle?.());
   el.next.addEventListener('click', () => actions.next());
   el.mute.addEventListener('click', () => actions.toggleMute());
   el.vol.addEventListener('input', () => actions.setVolume(Number(el.vol.value)));
@@ -72,13 +75,15 @@ export function renderControls(container, actions, { volumeAdjustable = true } =
     actions.seek(Number(el.seek.value));
   });
 
-  function update(state, { hasPrev = false, hasNext = false } = {}) {
+  function update(state, { hasPrev = false, hasNext = false, shuffle = false } = {}) {
     const loaded = !!state.track;
     const known = Number.isFinite(state.duration) && state.duration > 0;
 
     el.play.disabled = !loaded;
     el.prev.disabled = !loaded || (!hasPrev && state.currentTime < 0.5);
     el.next.disabled = !hasNext;
+    el.shuffle.setAttribute('aria-pressed', String(shuffle));
+    el.shuffle.title = shuffle ? 'Shuffle on (S)' : 'Shuffle off (S)';
     el.play.innerHTML = state.playing ? ICONS.pause : ICONS.play;
     el.play.setAttribute('aria-label', state.playing ? 'Pause' : 'Play');
     el.play.title = state.playing ? 'Pause (Space)' : 'Play (Space)';
