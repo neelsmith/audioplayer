@@ -1,3 +1,11 @@
 ---
 title: "Audio player"
 ---
+
+
+Play audio files on your computer.
+
+- browse local file system for audio files
+- optionally include cataloging data in delimited-text files
+
+Example [installation](./audioplayer.html)

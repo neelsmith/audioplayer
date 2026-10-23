@@ -60,7 +60,43 @@ main.dragging { border-color: var(--accent); background: var(--accent-bg); }
 #status { color: var(--muted); margin: 0 0 0.75rem; }
 #status.error { color: var(--error); }
 .hint { margin: -0.5rem 0 0.75rem; font-size: 0.8rem; color: var(--muted); }
-.hint:has(+ #tree:not(:empty)) { display: none; }
+#drop-zone:has(#tree:not(:empty)) .hint { display: none; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.25rem; margin: 0 0 0.75rem; font-size: 0.9rem; }
+.toolbar[hidden] { display: none; }
+#search {
+  flex: 1 1 14rem;
+  max-width: 24rem;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+}
+#search:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#search::placeholder { color: var(--muted); opacity: 1; }
+.catalog-bar { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; }
+.catalog-bar[hidden] { display: none; }
+.catalog-bar label { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); }
+.catalog-bar select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.2rem 0.4rem;
+}
+.catalog-bar select:disabled { opacity: 0.6; }
+.tree + .empty, #tree .empty { color: var(--muted); margin: 0.5rem 0; }
+.warnings { margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--warn); }
+.warnings[hidden] { display: none; }
+.warnings ul { margin: 0.25rem 0 0; padding-left: 1.25rem; }
+.tree .count {
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--muted);
+}
 kbd {
   font: inherit;
   padding: 0 0.3rem;
@@ -98,7 +134,7 @@ footer.player {
   position: sticky;
   bottom: 0;
   display: grid;
-  grid-template-columns: auto minmax(8rem, 1fr) minmax(12rem, 2fr) auto;
+  grid-template-columns: auto minmax(10rem, 1.5fr) minmax(12rem, 2fr) auto;
   grid-template-areas: "transport info timeline volume" "error error error error";
   align-items: center;
   gap: 0.25rem 1rem;

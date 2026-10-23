@@ -19,3 +19,19 @@ export function displayName(name) {
   const i = name.lastIndexOf('.');
   return i > 0 ? name.slice(0, i) : name;
 }
+
+/** Title to show for a track: the catalog title if there is one, else the file name without extension. */
+export function trackTitle(node) {
+  return node.meta?.title || displayName(node.name);
+}
+
+/**
+ * Second line for a track from its catalog entry — "Composer · Performer — Album",
+ * leaving out whatever is missing — else its folder path.
+ */
+export function trackSubtitle(node) {
+  const m = node.meta;
+  const people = [m?.composer, m?.performer].filter(Boolean).join(' · ');
+  const fromCatalog = [people, m?.album].filter(Boolean).join(' — ');
+  return fromCatalog || node.path.slice(0, Math.max(0, node.path.lastIndexOf('/')));
+}

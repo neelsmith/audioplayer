@@ -1,6 +1,6 @@
 # audioplayer
 
-> *[Release notes](https://github.com/neelsmith/audioplayer/blob/main/releases.md)
+> [Release notes](https://github.com/neelsmith/audioplayer/blob/main/releases.md)
 
 Play audio files in your local file system.
 

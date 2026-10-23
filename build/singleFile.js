@@ -41,8 +41,12 @@ export function inlineAssets(html, files) {
   return { html, inlined };
 }
 
-/** @returns {import('vite').Plugin} */
-export function singleFile() {
+/**
+ * @param {{ fileName?: string }} [options]  fileName renames the (single) output page,
+ *   e.g. "audioplayer.html" instead of Vite's "index.html"
+ * @returns {import('vite').Plugin}
+ */
+export function singleFile({ fileName } = {}) {
   return {
     name: 'audioplayer:single-file',
     enforce: 'post',
@@ -56,17 +60,37 @@ export function singleFile() {
       },
     }),
     generateBundle(_options, bundle) {
-      const files = {};
-      for (const [name, item] of Object.entries(bundle)) {
-        if (item.type === 'chunk') files[name] = item.code;
-        else if (name.endsWith('.css')) files[name] = String(item.source);
-      }
-      for (const item of Object.values(bundle)) {
-        if (item.type !== 'asset' || !item.fileName.endsWith('.html')) continue;
-        const { html, inlined } = inlineAssets(String(item.source), files);
-        item.source = html;
-        for (const name of inlined) delete bundle[name];
-      }
+      inlineBundle(bundle);
+      if (fileName) renameHtml(bundle, fileName, this);
     },
   };
+}
+
+/** Inline JS/CSS bundle files into each HTML page of a Rollup bundle (mutates it). */
+export function inlineBundle(bundle) {
+  const files = {};
+  for (const [name, item] of Object.entries(bundle)) {
+    if (item.type === 'chunk') files[name] = item.code;
+    else if (name.endsWith('.css')) files[name] = String(item.source);
+  }
+  for (const item of Object.values(bundle)) {
+    if (item.type !== 'asset' || !item.fileName.endsWith('.html')) continue;
+    const { html, inlined } = inlineAssets(String(item.source), files);
+    item.source = html;
+    for (const name of inlined) delete bundle[name];
+  }
+}
+
+/**
+ * Re-emit the bundle's only HTML page under `fileName`. Throws if there isn't
+ * exactly one page (renaming several to one name would lose pages).
+ * @param {{ emitFile: Function }} ctx  the plugin context (`this` in generateBundle)
+ */
+export function renameHtml(bundle, fileName, ctx) {
+  const pages = Object.values(bundle).filter((i) => i.type === 'asset' && i.fileName.endsWith('.html'));
+  if (pages.length !== 1) throw new Error(`singleFile: expected one HTML page to rename, found ${pages.length}`);
+  const [page] = pages;
+  if (page.fileName === fileName) return;
+  delete bundle[page.fileName];
+  ctx.emitFile({ type: 'asset', fileName, source: page.source });
 }
