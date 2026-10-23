@@ -4,6 +4,6 @@
     "href": "index.html",
     "title": "Audio player",
     "section": "",
-    "text": "Play audio files on your computer.\nInstallation"
+    "text": "Play audio files on your computer.\n\nbrowse local file system for audio files\noptionally include cataloging data in delimited-text files\n\nExample installation"
   }
 ]
