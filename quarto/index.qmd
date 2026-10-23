@@ -7,5 +7,6 @@ Play audio files on your computer.
 
 - browse local file system for audio files
 - optionally include cataloging data in delimited-text files
+- play open directory in order or shuffle 
 
 Example [installation](./audioplayer.html)

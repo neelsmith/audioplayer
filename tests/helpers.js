@@ -29,7 +29,7 @@ export function mountAppMarkup() {
 export class FakeAudio extends EventTarget {
   constructor() {
     super();
-    this.src = '';
+    this._src = '';
     this.paused = true;
     this.duration = NaN;
     this._currentTime = 0;
@@ -39,6 +39,9 @@ export class FakeAudio extends EventTarget {
     this.playResult = null; // e.g. Promise.reject(new DOMException('', 'NotAllowedError'))
   }
   fire(type) { this.dispatchEvent(new Event(type)); }
+  /** Like a real media element, a new source starts at 0 with unknown duration. */
+  get src() { return this._src; }
+  set src(v) { this._src = v; this._currentTime = 0; this.duration = NaN; }
   play() {
     if (this.playResult) return this.playResult;
     this.paused = false;

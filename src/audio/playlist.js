@@ -38,3 +38,28 @@ export function step(length, index, delta) {
   const next = index + delta;
   return index >= 0 && next >= 0 && next < length ? next : -1;
 }
+
+/**
+ * Random permutation of 0..length-1 (Fisher–Yates), with `first` moved to the
+ * front when it's a valid index (so the current track stays current).
+ * @param {() => number} [random]  returns [0, 1); injectable for tests
+ */
+export function shuffledOrder(length, first = -1, random = Math.random) {
+  const rest = [];
+  for (let i = 0; i < length; i++) if (i !== first) rest.push(i);
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [rest[i], rest[j]] = [rest[j], rest[i]];
+  }
+  return first >= 0 && first < length ? [first, ...rest] : rest;
+}
+
+/**
+ * Play order over `length` tracks, positioned at track `index` (-1 = none):
+ * in order, or shuffled with that track first.
+ * @returns {{ order: number[], pos: number }}  the current track is order[pos]
+ */
+export function makeQueue(length, index, shuffle, random = Math.random) {
+  const order = shuffle ? shuffledOrder(length, index, random) : Array.from({ length }, (_, i) => i);
+  return { order, pos: index >= 0 ? order.indexOf(index) : -1 };
+}

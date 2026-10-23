@@ -28,3 +28,17 @@ describe('volume prefs', () => {
     expect(() => saveVolume(null, { volume: 1, muted: false })).not.toThrow();
   });
 });
+
+describe('shuffle pref', () => {
+  it('round-trips and defaults to off', async () => {
+    const { loadShuffle, saveShuffle } = await import('../../src/audio/prefs.js');
+    const s = memory();
+    expect(loadShuffle(s)).toBe(false);
+    saveShuffle(s, true);
+    expect(loadShuffle(s)).toBe(true);
+    saveShuffle(s, false);
+    expect(loadShuffle(s)).toBe(false);
+    expect(loadShuffle(throwing)).toBe(false);
+    expect(() => saveShuffle(throwing, true)).not.toThrow();
+  });
+});

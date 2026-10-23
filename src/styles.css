@@ -160,6 +160,20 @@ footer.player {
 .player button.play:hover:not(:disabled) { background: var(--accent); filter: brightness(1.1); }
 .player button.play:disabled { background: var(--muted); color: var(--bg); }
 .transport { grid-area: transport; display: flex; gap: 0.25rem; }
+.player button.shuffle { position: relative; color: var(--muted); }
+.player button.shuffle[aria-pressed="true"] { color: var(--accent); }
+/* A dot under the icon when on, so the state isn't shown by colour alone. */
+.player button.shuffle[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: currentColor;
+}
 .info { grid-area: info; display: flex; flex-direction: column; min-width: 0; }
 .info .title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .info .folder { font-size: 0.8rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
