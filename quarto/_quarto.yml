@@ -28,7 +28,8 @@ website:
     left:
       - text: "Home"
         file: index.qmd                 
-    
+      - text: "Catalogs"
+        file: cataloging/index.qmd      
           
 
     right:

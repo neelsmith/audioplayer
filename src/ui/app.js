@@ -6,7 +6,7 @@ import { findCatalogs, defaultCatalog, parseCatalog, applyCatalog, clearCatalog 
 import { groupTracks, GROUP_MODES } from '../catalog/group.js';
 import { matcher, filterTree, countFiles } from '../catalog/search.js';
 import { renderControls } from './controls.js';
-import { folderPlaylist, makeQueue } from '../audio/playlist.js';
+import { folderPlaylist, branchPlaylist, dirTracks, makeQueue, shuffledOrder } from '../audio/playlist.js';
 import { connectMediaSession } from '../audio/mediaSession.js';
 import { loadVolume, saveVolume, loadShuffle, saveShuffle } from '../audio/prefs.js';
 import { trackTitle } from './format.js';
@@ -91,9 +91,17 @@ export function initApp(root = document, {
   /**
    * The current playlist: `tracks` in display order, played in `order` (identity, or a
    * shuffle with the chosen track first); the current track is tracks[order[pos]].
-   * @type {{ tracks: any[], order: number[], pos: number }}
+   * `fromFolder` marks Folder-view playlists, which are rebuilt when shuffle changes.
+   * @type {{ tracks: any[], order: number[], pos: number, fromFolder?: boolean }}
    */
   let playlist = { tracks: [], order: [], pos: -1 };
+
+  /**
+   * Folder-view playlist for `node`: with shuffle on, its folder and every subfolder;
+   * otherwise just its folder. Uses the tree as shown (search results only, if searching).
+   */
+  const folderList = (node) =>
+    (shuffle ? branchPlaylist : folderPlaylist)(shownTree, node.path, isPlayable);
   let shuffle = loadShuffle(storage);
 
   const isPlayable = (node) => kindOf(node, classify) === 'playable';
@@ -111,12 +119,27 @@ export function initApp(root = document, {
       const playable = tracks.filter(isPlayable);
       list = { tracks: playable, index: playable.indexOf(node) };
     } else if (shownTree) {
-      // In Folder view the playlist is the track's folder as shown (search results only, if searching).
-      list = folderPlaylist(shownTree, node.path, isPlayable);
+      list = folderList(node);
     }
-    if (list) playlist = { tracks: list.tracks, ...makeQueue(list.tracks.length, list.index, shuffle, random) };
+    if (list) {
+      playlist = { tracks: list.tracks, ...makeQueue(list.tracks.length, list.index, shuffle, random), fromFolder: !tracks };
+    }
     player?.load(node);
     onSelect(node);
+  }
+
+  /**
+   * Play a whole folder (everything below it) or group, from the start: in display
+   * order, or — with shuffle on — each track once in random order. Toggling shuffle
+   * later reorders these same tracks (it doesn't narrow to one folder).
+   */
+  function playAll(tracks) {
+    const playable = tracks.filter(isPlayable);
+    if (!playable.length) return;
+    playlistTree = tree;
+    const order = shuffle ? shuffledOrder(playable.length, -1, random) : playable.map((_, i) => i);
+    playlist = { tracks: playable, order, pos: -1 };
+    playAtPos(0);
   }
 
   function playAtPos(pos) {
@@ -140,15 +163,35 @@ export function initApp(root = document, {
 
   /**
    * Turn shuffle on/off. The current track carries on; on = the rest of the playlist in
-   * random order; off = continue in display order from the current track.
+   * random order; off = continue in display order from the current track. In Folder view
+   * the playlist is rebuilt around the current track: on = its folder and everything
+   * below it, off = just its own folder.
    */
   function setShuffle(on) {
     shuffle = on;
     saveShuffle(storage, on);
+    const currentNode = playlist.pos >= 0 ? playlist.tracks[playlist.order[playlist.pos]] : null;
+    if (currentNode && playlist.fromFolder && playlistTree === tree && shownTree && groupMode === 'folder') {
+      const list = folderList(currentNode);
+      if (list.index >= 0) {
+        playlist = { tracks: list.tracks, ...makeQueue(list.tracks.length, list.index, on, random), fromFolder: true };
+        player?.emit();
+        return;
+      }
+    }
+    // Groups, play-all, or the folder isn't shown any more: keep the same tracks, just reorder.
     const current = playlist.pos >= 0 ? playlist.order[playlist.pos] : -1;
-    if (playlist.tracks.length) playlist = { tracks: playlist.tracks, ...makeQueue(playlist.tracks.length, current, on, random) };
+    if (playlist.tracks.length) {
+      playlist = { ...playlist, ...makeQueue(playlist.tracks.length, current, on, random) };
+    }
     player?.emit();
   }
+
+  /** setShuffle also relabels the play-all buttons. */
+  const setShuffleAndLabels = (on) => {
+    setShuffle(on);
+    view?.setShuffle?.(on);
+  };
 
   let controls = null;
   const cleanups = [];
@@ -166,7 +209,7 @@ export function initApp(root = document, {
       seek: (t) => player.seek(t),
       setVolume: (v) => player.setVolume(v),
       toggleMute: () => player.toggleMute(),
-      toggleShuffle: () => setShuffle(!shuffle),
+      toggleShuffle: () => setShuffleAndLabels(!shuffle),
     }, { volumeAdjustable: player.volumeAdjustable });
 
     let lastVol = player.state.volume;
@@ -214,7 +257,7 @@ export function initApp(root = document, {
       player.toggle();
     } else if (e.key === 's' || e.key === 'S') {
       e.preventDefault();
-      setShuffle(!shuffle);
+      setShuffleAndLabels(!shuffle);
     } else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && !onSlider && player.track) {
       e.preventDefault();
       player.seekBy(e.key === 'ArrowRight' ? SEEK_STEP : -SEEK_STEP);
@@ -307,12 +350,18 @@ export function initApp(root = document, {
     if (groupMode === 'folder') {
       shownTree = include ? filterTree(tree, include) : tree;
       shownCount = include ? countFiles(shownTree) : 0;
-      view = renderTree(treeEl, shownTree, { classify, onSelect: (n) => select(n), openAll: !!include });
+      view = renderTree(treeEl, shownTree, {
+        classify, onSelect: (n) => select(n), openAll: !!include, shuffle,
+        onPlayAll: (dir) => playAll(dirTracks(dir, isPlayable)),
+      });
     } else {
       shownTree = null;
       const groups = groupTracks(tree, groupMode, include ?? isAudio);
       shownCount = include ? new Set(groups.flatMap((g) => g.tracks)).size : 0;
-      view = renderGroups(treeEl, groups, { classify, onSelect: (n, tracks) => select(n, tracks), openAll: !!include });
+      view = renderGroups(treeEl, groups, {
+        classify, onSelect: (n, tracks) => select(n, tracks), openAll: !!include, shuffle,
+        onPlayAll: (tracks) => playAll(tracks),
+      });
     }
     if (include && shownCount === 0) {
       const p = doc.createElement('p');
@@ -403,7 +452,7 @@ export function initApp(root = document, {
   return {
     show,
     useCatalog,
-    setShuffle,
+    setShuffle: setShuffleAndLabels,
     get shuffle() { return shuffle; },
     next,
     prev,

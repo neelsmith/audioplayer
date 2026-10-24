@@ -1,10 +1,11 @@
 # Release notes
 
-Current version: **1.2.0.**
+Current version: **1.3.0.**
 
+
+**1.3.0**, *Oct. 24*: shuffle now works throughout selected directory hierarchy; shuffle and ordered play both now allow playing a set of subdirectories even when no audio files are present in the root directory.
 
 **1.2.0**, *Oct. 23, 2026*: adds shuffle option to player.
-
 
 **1.1.0**, *Oct. 22, 2026*: 
 

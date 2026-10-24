@@ -1,4 +1,5 @@
 import { classify as defaultClassify } from '../audio/formats.js';
+import { svg, PATHS } from './icons.js';
 
 /**
  * @typedef {import('../fs/tree.js').DirNode} DirNode
@@ -75,7 +76,39 @@ function renderFile(node, classify, onSelect) {
   return li;
 }
 
-function renderDir(dir, classify, onSelect, depth, openAll) {
+/** Number of playable files in a folder and all its subfolders. */
+function countPlayable(dir, classify) {
+  let n = 0;
+  for (const c of dir.children) n += c.type === 'dir' ? countPlayable(c, classify) : kindOf(c, classify) === 'playable' ? 1 : 0;
+  return n;
+}
+
+/**
+ * A "play all" button for a folder or group row. Its icon and label say whether it
+ * will play in order or shuffled; `setPlayAllMode` updates them when shuffle changes.
+ */
+function playAllButton(name, count, onClick) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'play-all';
+  btn.dataset.name = name;
+  btn.dataset.count = String(count);
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
+/** Update every play-all button under `container` for shuffle on/off. */
+export function setPlayAllMode(container, shuffle) {
+  for (const btn of container.querySelectorAll('button.play-all')) {
+    const n = Number(btn.dataset.count);
+    const label = `${shuffle ? 'Shuffle' : 'Play'} all ${n} ${n === 1 ? 'track' : 'tracks'} in ${btn.dataset.name}`;
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+    btn.innerHTML = svg(shuffle ? PATHS.shuffle : PATHS.play, 13);
+  }
+}
+
+function renderDir(dir, classify, onSelect, depth, openAll, onPlayAll) {
   const ul = document.createElement('ul');
   for (const child of dir.children) {
     if (child.type === 'file') {
@@ -85,11 +118,13 @@ function renderDir(dir, classify, onSelect, depth, openAll) {
     const li = document.createElement('li');
     li.className = 'dir';
     li.dataset.path = child.path;
+    const count = onPlayAll ? countPlayable(child, classify) : 0;
+    if (count) li.append(playAllButton(child.name, count, () => onPlayAll(child)));
     const details = document.createElement('details');
     details.open = openAll || depth === 0; // normally top level expanded, the rest collapsed
     const summary = document.createElement('summary');
     summary.textContent = child.name;
-    details.append(summary, renderDir(child, classify, onSelect, depth + 1, openAll));
+    details.append(summary, renderDir(child, classify, onSelect, depth + 1, openAll, onPlayAll));
     li.append(details);
     ul.append(li);
   }
@@ -104,25 +139,32 @@ function renderDir(dir, classify, onSelect, depth, openAll) {
  *
  * @param {HTMLElement} container
  * @param {DirNode} root
- * @param {{ onSelect?: (node: FileNode) => void, classify?: Classifier, openAll?: boolean }} [opts]
- *   openAll expands every folder (used for search results)
- * @returns {{ select: (path: string) => void }} lets callers move the highlight (e.g. next track)
+ * @param {{ onSelect?: (node: FileNode) => void, classify?: Classifier, openAll?: boolean,
+ *           onPlayAll?: (dir: DirNode) => void, shuffle?: boolean }} [opts]
+ *   openAll expands every folder (used for search results); onPlayAll adds a play-all
+ *   button to each folder with playable audio anywhere below it
+ * @returns {{ select: (path: string) => void, setShuffle: (on: boolean) => void }}
+ *   select moves the highlight (e.g. next track); setShuffle relabels play-all buttons
  */
-export function renderTree(container, root, { onSelect = () => {}, classify = defaultClassify, openAll = false } = {}) {
+export function renderTree(container, root, {
+  onSelect = () => {}, classify = defaultClassify, openAll = false, onPlayAll = null, shuffle = false,
+} = {}) {
   const hl = highlighter();
   const handle = (node, btn) => {
     hl.set(btn);
     onSelect(node);
   };
 
-  const tree = renderDir(root, classify, handle, 0, openAll);
+  const tree = renderDir(root, classify, handle, 0, openAll, onPlayAll);
   tree.className = 'tree';
   container.replaceChildren(tree);
+  setPlayAllMode(container, shuffle);
 
   return {
     select(path) {
       hl.set(revealTrack(findTrackButton(container, path)));
     },
+    setShuffle: (on) => setPlayAllMode(container, on),
   };
 }
 
@@ -157,10 +199,13 @@ function revealTrack(btn) {
  *
  * @param {HTMLElement} container
  * @param {{ key: string, label: string, tracks: FileNode[] }[]} groups
- * @param {{ onSelect?: (node: FileNode, tracks: FileNode[]) => void, classify?: Classifier, openAll?: boolean }} [opts]
- * @returns {{ select: (path: string) => void }}
+ * @param {{ onSelect?: (node: FileNode, tracks: FileNode[]) => void, classify?: Classifier, openAll?: boolean,
+ *           onPlayAll?: (tracks: FileNode[]) => void, shuffle?: boolean }} [opts]
+ * @returns {{ select: (path: string) => void, setShuffle: (on: boolean) => void }}
  */
-export function renderGroups(container, groups, { onSelect = () => {}, classify = defaultClassify, openAll = false } = {}) {
+export function renderGroups(container, groups, {
+  onSelect = () => {}, classify = defaultClassify, openAll = false, onPlayAll = null, shuffle = false,
+} = {}) {
   const hl = highlighter();
   let activeGroup = null;
 
@@ -170,6 +215,13 @@ export function renderGroups(container, groups, { onSelect = () => {}, classify 
     const li = document.createElement('li');
     li.className = 'dir group';
     li.dataset.group = g.key;
+    const playable = g.tracks.filter((t) => kindOf(t, classify) === 'playable').length;
+    if (onPlayAll && playable) {
+      li.append(playAllButton(g.label, playable, () => {
+        activeGroup = li;
+        onPlayAll(g.tracks);
+      }));
+    }
     const details = document.createElement('details');
     details.open = openAll || groups.length === 1;
     const summary = document.createElement('summary');
@@ -191,8 +243,10 @@ export function renderGroups(container, groups, { onSelect = () => {}, classify 
     list.append(li);
   }
   container.replaceChildren(list);
+  setPlayAllMode(container, shuffle);
 
   return {
+    setShuffle: (on) => setPlayAllMode(container, on),
     /** Highlight a track, preferring the group it's currently being played from. */
     select(path) {
       const btn = (activeGroup && findTrackButton(activeGroup, path)) || findTrackButton(container, path);

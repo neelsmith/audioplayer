@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildTree } from '../../src/fs/tree.js';
-import { findDir, parentPath, folderPlaylist, step, shuffledOrder, makeQueue } from '../../src/audio/playlist.js';
+import { findDir, parentPath, folderPlaylist, branchPlaylist, step, shuffledOrder, makeQueue } from '../../src/audio/playlist.js';
 
 const root = buildTree(
   ['A/01.mp3', 'A/02.ogg', 'A/03.mp3', 'A/cover.jpg', 'A/Sub/x.mp3', 'top.mp3'].map((path) => ({ path, file: null })),
@@ -30,6 +30,21 @@ describe('folderPlaylist', () => {
   });
   it('returns index -1 for an unknown path', () => {
     expect(folderPlaylist(root, 'A/missing.mp3', isPlayable).index).toBe(-1);
+  });
+});
+
+describe('branchPlaylist', () => {
+  it('includes every subfolder below the selected file\'s folder, in display order', () => {
+    const { tracks, index } = branchPlaylist(root, 'A/03.mp3', isPlayable);
+    expect(tracks.map((t) => t.path)).toEqual(['A/Sub/x.mp3', 'A/01.mp3', 'A/03.mp3']);
+    expect(index).toBe(2);
+  });
+  it('from the top level covers everything', () => {
+    expect(branchPlaylist(root, 'top.mp3', isPlayable).tracks.map((t) => t.path))
+      .toEqual(['A/Sub/x.mp3', 'A/01.mp3', 'A/03.mp3', 'top.mp3']);
+  });
+  it('from a leaf folder is just that folder', () => {
+    expect(branchPlaylist(root, 'A/Sub/x.mp3', isPlayable).tracks.map((t) => t.path)).toEqual(['A/Sub/x.mp3']);
   });
 });
 
@@ -75,5 +90,16 @@ describe('makeQueue', () => {
   it('has no position without a current track', () => {
     expect(makeQueue(3, -1, false).pos).toBe(-1);
     expect(makeQueue(3, -1, true, seeded(2)).pos).toBe(-1);
+  });
+});
+
+describe('dirTracks', () => {
+  it('collects playable tracks from all subfolders, even when the folder has none of its own', async () => {
+    const { dirTracks } = await import('../../src/audio/playlist.js');
+    const lib = buildTree(['bach/wtc/p.mp3', 'bach/wtc/f.mp3', 'bach/inventions/i.mp3', 'bach/notes.txt']
+      .map((path) => ({ path, file: null })));
+    const bach = findDir(lib, 'bach');
+    expect(dirTracks(bach, isPlayable).map((t) => t.path)).toEqual(['bach/inventions/i.mp3', 'bach/wtc/f.mp3', 'bach/wtc/p.mp3']);
+    expect(dirTracks(findDir(lib, 'bach/inventions'), () => false)).toEqual([]);
   });
 });

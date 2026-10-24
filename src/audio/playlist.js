@@ -33,6 +33,33 @@ export function folderPlaylist(root, path, isPlayable) {
   return { tracks, index: tracks.findIndex((t) => t.path === path) };
 }
 
+/**
+ * Like folderPlaylist, but the selected file's folder *and everything below it*:
+ * playable files in display order (each folder's subfolders, then its own files).
+ * @returns {{ tracks: import('../fs/tree.js').FileNode[], index: number }}
+ */
+export function branchPlaylist(root, path, isPlayable) {
+  const dir = findDir(root, parentPath(path));
+  const tracks = dir ? dirTracks(dir, isPlayable) : [];
+  return { tracks, index: tracks.findIndex((t) => t.path === path) };
+}
+
+/**
+ * Every playable file in a folder and its subfolders, in display order (each
+ * folder's subfolders first, then its own files) — even if the folder itself has none.
+ */
+export function dirTracks(dir, isPlayable) {
+  const tracks = [];
+  const walk = (d) => {
+    for (const c of d.children) {
+      if (c.type === 'dir') walk(c);
+      else if (isPlayable(c)) tracks.push(c);
+    }
+  };
+  walk(dir);
+  return tracks;
+}
+
 /** Index after moving `delta` from `index`, or -1 if that runs off either end (no wrap-around). */
 export function step(length, index, delta) {
   const next = index + delta;

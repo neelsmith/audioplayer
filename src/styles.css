@@ -105,11 +105,34 @@ kbd {
   border-radius: 4px;
 }
 
-.tree, .tree ul { list-style: none; margin: 0; padding-left: 1.1rem; }
+.tree, .tree ul { list-style: none; margin: 0; padding-left: 0.5rem; }
 .tree { padding-left: 0; }
+/* Each folder/group row has a gutter on its left for its play-all button. */
+.tree { --gutter: 1.6rem; }
 .tree li { margin: 1px 0; }
+.tree li.dir { position: relative; padding-left: var(--gutter); }
 .tree summary { cursor: pointer; font-weight: 500; padding: 2px 0; }
-.tree .file { padding-left: 1rem; }
+.tree .file { padding-left: calc(var(--gutter) + 1rem); }
+.tree button.play-all {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  display: inline-grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--accent);
+  cursor: pointer;
+}
+.tree button.play-all:hover, .tree button.play-all:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
 .tree button.track {
   all: unset;
   cursor: pointer;

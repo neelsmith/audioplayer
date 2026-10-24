@@ -10,3 +10,5 @@ Play audio files on your computer.
 - play open directory in order or shuffle 
 
 Example [installation](./audioplayer.html)
+
+![Screen grab (v1.3.0)](./imgs/screenie.png)
