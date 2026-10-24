@@ -1,9 +1,30 @@
 [
   {
+    "objectID": "cataloging/index.html",
+    "href": "cataloging/index.html",
+    "title": "Cataloging tracks",
+    "section": "",
+    "text": "Within the root directory you select, delimited-text files with names ending .cex are treated as audio catalogs, and are listed in the Catalog menu. Catalogs in subfolders are only recognized if you re-select that subfolder as your starting point.\n\n\nCatalogs are delimited-text files using | as delimiter by default, and including a header row. The catalog must include a column for path, giving the path of the track relative to the catalog’s directory.\nAll other columns are optional, but the following optional columns are given special treatment if present:\n\n\n\n\n\n\n\nColumn\nUsed for\n\n\n\n\ntitle\nlabel in the list, player bar, window title, Now Playing\n\n\ncomposer\nGroup by → Composer; player bar second line; Now Playing artist if no performer\n\n\nperformer\nGroup by → Performer; player bar second line; Now Playing artist. An artist column is read as performer\n\n\nalbum\nGroup by → Album; player bar second line; Now Playing album\n\n\ntags\nGroup by → Tag (comma-separated; a track appears under each tag); search\n\n\ncaption\ntooltip; search\n\n\ncredits\ntooltip; search\n\n\nlicense\ntooltip\n\n\n\nAny other columns that you choose to add will be included in the full-text search of the catalog. For example, if you had a year column, it would be searchable, but not otherwise used.\n\n\n\nHere is an example of a valid catalog file:\npath|title|composer|performer|album|credits|license|caption\nWTC/01.mp3|Prelude in C major|Bach, J. S.|NS||Recorded by NS|CC BY|Book 1\nWTC/02.mp3|Fugue in C major|Bach, J. S.|NS||Recorded by NS|CC BY|Book 1\ngoldberg-aria.mp3|Aria|Bach, J. S.|Glenn Gould|Goldberg Variations|||"
+  },
+  {
+    "objectID": "cataloging/index.html#format",
+    "href": "cataloging/index.html#format",
+    "title": "Cataloging tracks",
+    "section": "",
+    "text": "Catalogs are delimited-text files using | as delimiter by default, and including a header row. The catalog must include a column for path, giving the path of the track relative to the catalog’s directory.\nAll other columns are optional, but the following optional columns are given special treatment if present:\n\n\n\n\n\n\n\nColumn\nUsed for\n\n\n\n\ntitle\nlabel in the list, player bar, window title, Now Playing\n\n\ncomposer\nGroup by → Composer; player bar second line; Now Playing artist if no performer\n\n\nperformer\nGroup by → Performer; player bar second line; Now Playing artist. An artist column is read as performer\n\n\nalbum\nGroup by → Album; player bar second line; Now Playing album\n\n\ntags\nGroup by → Tag (comma-separated; a track appears under each tag); search\n\n\ncaption\ntooltip; search\n\n\ncredits\ntooltip; search\n\n\nlicense\ntooltip\n\n\n\nAny other columns that you choose to add will be included in the full-text search of the catalog. For example, if you had a year column, it would be searchable, but not otherwise used."
+  },
+  {
+    "objectID": "cataloging/index.html#example",
+    "href": "cataloging/index.html#example",
+    "title": "Cataloging tracks",
+    "section": "",
+    "text": "Here is an example of a valid catalog file:\npath|title|composer|performer|album|credits|license|caption\nWTC/01.mp3|Prelude in C major|Bach, J. S.|NS||Recorded by NS|CC BY|Book 1\nWTC/02.mp3|Fugue in C major|Bach, J. S.|NS||Recorded by NS|CC BY|Book 1\ngoldberg-aria.mp3|Aria|Bach, J. S.|Glenn Gould|Goldberg Variations|||"
+  },
+  {
     "objectID": "index.html",
     "href": "index.html",
     "title": "Audio player",
     "section": "",
-    "text": "Play audio files on your computer.\n\nbrowse local file system for audio files\noptionally include cataloging data in delimited-text files\nplay open directory in order or shuffle\n\nExample installation"
+    "text": "Play audio files on your computer.\n\nbrowse local file system for audio files\noptionally include cataloging data in delimited-text files\nplay open directory in order or shuffle\n\nExample installation\n\n\n\nScreen grab (v1.3.0)"
   }
 ]
