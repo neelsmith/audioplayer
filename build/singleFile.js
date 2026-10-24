@@ -66,18 +66,60 @@ export function singleFile({ fileName } = {}) {
   };
 }
 
-/** Inline JS/CSS bundle files into each HTML page of a Rollup bundle (mutates it). */
+/** MIME types for binary assets the page may link to (icons, images, fonts). */
+export const ASSET_TYPES = Object.freeze({
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+  avif: 'image/avif', svg: 'image/svg+xml', ico: 'image/x-icon',
+  woff: 'font/woff', woff2: 'font/woff2',
+});
+
+/**
+ * Pure transform: replace href="…" / src="…" attributes that point at known
+ * bundle files with data: URLs. (Vite inlines assets imported from JS/CSS, but
+ * not ones linked from the HTML itself, e.g. <link rel="icon">.)
+ *
+ * @param {string} html
+ * @param {Record<string, string>} dataUrls  bundle fileName → data: URL
+ * @returns {{ html: string, inlined: string[] }}
+ */
+export function inlineAttributes(html, dataUrls) {
+  const inlined = [];
+  for (const [fileName, url] of Object.entries(dataUrls)) {
+    const attr = new RegExp(`\\b(href|src)=(["'])(?:\\./|/)?${reEscape(fileName)}\\2`, 'g');
+    const next = html.replace(attr, (_m, name, q) => `${name}=${q}${url}${q}`);
+    if (next !== html) inlined.push(fileName);
+    html = next;
+  }
+  return { html, inlined };
+}
+
+/** data: URL for a Rollup asset, or null if its type isn't one we embed. */
+function toDataUrl(fileName, source) {
+  const mime = ASSET_TYPES[fileName.split('.').pop().toLowerCase()];
+  if (!mime) return null;
+  const bytes = typeof source === 'string' ? Buffer.from(source) : Buffer.from(source);
+  return `data:${mime};base64,${bytes.toString('base64')}`;
+}
+
+/** Inline JS/CSS and linked images into each HTML page of a Rollup bundle (mutates it). */
 export function inlineBundle(bundle) {
   const files = {};
   for (const [name, item] of Object.entries(bundle)) {
     if (item.type === 'chunk') files[name] = item.code;
     else if (name.endsWith('.css')) files[name] = String(item.source);
   }
+  const dataUrls = {};
+  for (const [name, item] of Object.entries(bundle)) {
+    if (item.type !== 'asset') continue;
+    const url = toDataUrl(name, item.source);
+    if (url) dataUrls[name] = url;
+  }
   for (const item of Object.values(bundle)) {
     if (item.type !== 'asset' || !item.fileName.endsWith('.html')) continue;
-    const { html, inlined } = inlineAssets(String(item.source), files);
-    item.source = html;
-    for (const name of inlined) delete bundle[name];
+    const a = inlineAssets(String(item.source), files);
+    const b = inlineAttributes(a.html, dataUrls);
+    item.source = b.html;
+    for (const name of [...a.inlined, ...b.inlined]) delete bundle[name];
   }
 }
 
