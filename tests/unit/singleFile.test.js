@@ -77,3 +77,34 @@ describe('renameHtml', () => {
     expect(() => renameHtml(bundle, 'audioplayer.html', ctx())).toThrow(/expected one HTML page/);
   });
 });
+
+describe('inlineAttributes', () => {
+  it('replaces linked icons with data: URLs and reports them', async () => {
+    const { inlineAttributes } = await import('../../build/singleFile.js');
+    const html = '<link rel="icon" href="./assets/fav-1.png" /><link rel="apple-touch-icon" href=\'/assets/touch.png\'>' +
+      '<img src="assets/fav-1.png"><a href="./assets/other.png">x</a>';
+    const { html: out, inlined } = inlineAttributes(html, {
+      'assets/fav-1.png': 'data:image/png;base64,AAA',
+      'assets/touch.png': 'data:image/png;base64,BBB',
+    });
+    expect(out).toBe('<link rel="icon" href="data:image/png;base64,AAA" />' +
+      "<link rel=\"apple-touch-icon\" href='data:image/png;base64,BBB'>" +
+      '<img src="data:image/png;base64,AAA"><a href="./assets/other.png">x</a>');
+    expect(inlined.sort()).toEqual(['assets/fav-1.png', 'assets/touch.png']);
+  });
+});
+
+describe('inlineBundle', () => {
+  it('embeds a linked PNG from the bundle and removes the separate file', async () => {
+    const { inlineBundle } = await import('../../build/singleFile.js');
+    const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47]);
+    const bundle = {
+      'index.html': { type: 'asset', fileName: 'index.html', source: '<link rel="icon" href="./assets/i.png">' },
+      'assets/i.png': { type: 'asset', fileName: 'assets/i.png', source: png },
+      'assets/data.bin': { type: 'asset', fileName: 'assets/data.bin', source: png },
+    };
+    inlineBundle(bundle);
+    expect(bundle['index.html'].source).toBe('<link rel="icon" href="data:image/png;base64,iVBORw==">');
+    expect(Object.keys(bundle).sort()).toEqual(['assets/data.bin', 'index.html']); // unknown types left alone
+  });
+});
